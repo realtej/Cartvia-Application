@@ -1,15 +1,30 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+/.idea/
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+
+# Exclude compiled output, generated files, and build configurations
+**/build/
+**/generated/
+
+# Exclude secure credentials, tokens, local configurations, and sensitive network settings
+**/google-services.json
+**/keystore.jks
+**/keystore.properties
+**/local.properties
+**/secrets.properties
+**/network_security_config.xml
+
+# Exclude system and user preferences caches
+.idea/workspace.xml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
