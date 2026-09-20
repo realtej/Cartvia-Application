@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Exclude sensitive encrypted preferences -->
+    <exclude domain="sharedpref" path="secure_cartvia_prefs.xml"/>
+    <!-- Exclude standard preferences if they contain sensitive data -->
+    <exclude domain="sharedpref" path="cartvia_prefs.xml"/>
+</full-backup-content>
