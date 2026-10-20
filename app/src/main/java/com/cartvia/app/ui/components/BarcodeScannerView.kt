@@ -1,5 +1,6 @@
 package com.cartvia.app.ui.components
 
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -10,8 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,13 +26,23 @@ import java.util.concurrent.Executors
 @Composable
 fun BarcodeScannerView(
     onBarcodeDetected: (String) -> Unit,
+    isFlashlightOn: Boolean = false,
     onClose: (() -> Unit)? = null,
     onError: ((Throwable) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    
+    var cameraInstance by remember { mutableStateOf<Camera?>(null) }
+
+    LaunchedEffect(isFlashlightOn) {
+        try {
+            cameraInstance?.cameraControl?.enableTorch(isFlashlightOn)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { ctx ->
@@ -52,12 +62,14 @@ fun BarcodeScannerView(
                             }
                         
                         cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
+                        val camera = cameraProvider.bindToLifecycle(
                             lifecycleOwner,
                             CameraSelector.DEFAULT_BACK_CAMERA,
                             preview,
                             analysis
                         )
+                        cameraInstance = camera
+                        camera.cameraControl.enableTorch(isFlashlightOn)
                     } catch (e: Exception) {
                         e.printStackTrace()
                         onError?.invoke(e)

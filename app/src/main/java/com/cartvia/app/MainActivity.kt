@@ -3,6 +3,7 @@ package com.cartvia.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
     lateinit var tokenManager: TokenManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         
         val isOnboardingCompleted = tokenManager.isOnboardingCompletedSync()
@@ -116,14 +118,28 @@ fun CartviaNavHost(
                 onLoginClick = { navController.popBackStack() }
             )
         }
+        composable<Screen.ForgotPassword> {
+            ForgotPasswordScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
         composable<Screen.Home> {
             HomeScreen(viewModel = hiltViewModel())
         }
-        composable<Screen.List> {
-            ListScreen()
+        composable<Screen.List> { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.List>()
+            ShoppingListScreen(
+                viewModel = hiltViewModel(),
+                listId = route.listId,
+                onBack = { navController.popBackStack() }
+            )
         }
         composable<Screen.MyList> {
-            ShoppingListScreen(viewModel = hiltViewModel())
+            MyListScreen(
+                onSelectList = { listId ->
+                    navController.navigate(Screen.List(listId))
+                }
+            )
         }
         composable<Screen.ShoppingBag> {
             ShoppingBagScreen(
@@ -159,7 +175,10 @@ fun CartviaNavHost(
             )
         }
         composable<Screen.LocateShop> {
-            LocateShopScreen()
+            NearbyStoresScreen(
+                viewModel = hiltViewModel(),
+                onStoreClick = { id -> navController.navigate(Screen.StoreHeatmap(id)) }
+            )
         }
         composable<Screen.NearbyStores> {
             NearbyStoresScreen(
@@ -212,12 +231,29 @@ fun CartviaNavHost(
             ProfileScreen(
                 viewModel = hiltViewModel(),
                 onLogout = { 
-                    // Handle logout logic
                     navController.navigate(Screen.Login) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
                 onNavigateToHistory = { navController.navigate(Screen.OrderHistory) }
+            )
+        }
+        composable<Screen.Notifications> {
+            NotificationsScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable<Screen.SupportFaq> {
+            SupportFaqScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable<Screen.SessionEnded> { backStackEntry ->
+            val route: Screen.SessionEnded = backStackEntry.toRoute()
+            SessionEndedScreen(
+                cartId = route.cartId,
+                finalBill = route.finalBill,
+                onDone = { navController.navigate(Screen.Home) }
             )
         }
     }

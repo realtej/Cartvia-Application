@@ -1,27 +1,30 @@
 package com.cartvia.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.cartvia.app.ui.components.CartviaAppTopBar
-import com.cartvia.app.ui.components.CartviaButton
+import androidx.compose.ui.unit.sp
+import com.cartvia.app.ui.theme.BackgroundGray
+import com.cartvia.app.ui.theme.BorderGray
+import com.cartvia.app.ui.theme.NeutralDark
 import com.cartvia.app.ui.theme.NeutralGray
 import com.cartvia.app.ui.theme.PrimaryBlue
 import com.cartvia.app.ui.theme.SuccessGreen
 
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import com.cartvia.app.util.ApiResult
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DigitalReceiptScreen(
     orderId: String,
@@ -32,13 +35,32 @@ fun DigitalReceiptScreen(
         viewModel.loadReceipt(orderId)
     }
 
-    val receiptState by viewModel.receiptState.collectAsState()
-
     Scaffold(
+        containerColor = BackgroundGray,
         topBar = {
-            CartviaAppTopBar(
-                title = "Digital Receipt",
-                onBack = onBack
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Digital Receipt",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeutralDark
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color.White),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = NeutralDark, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = BackgroundGray)
             )
         }
     ) { padding ->
@@ -46,96 +68,134 @@ fun DigitalReceiptScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp)
+                .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            when (val state = receiptState) {
-                is ApiResult.Success -> {
-                    val data = state.data
-                    Surface(
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = Color.White,
+                border = androidx.compose.foundation.BorderStroke(1.dp, BorderGray)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "Invoice #INV-2026-004",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeutralDark
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Date: Oct 24, 2026 • 11:32 AM",
+                        fontSize = 13.sp,
+                        color = NeutralGray
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    HorizontalDivider(color = BorderGray)
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ReceiptItemRow("AeroSound Max", "Qty: 1 • Space Grey", "₹18,499.00")
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    ReceiptItemRow("Hydro Smart Flask", "Qty: 2 • Matte Blue", "₹5,998.00")
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    HorizontalDivider(color = BorderGray)
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ReceiptBreakdownRow("Subtotal", "₹24,497.00")
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    ReceiptBreakdownRow("GST (18%)", "₹4,409.46")
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    ReceiptBreakdownRow("Promo (FIRSTPURCHASE500)", "-₹500.00", valueColor = SuccessGreen)
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    HorizontalDivider(color = BorderGray)
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
-                        color = Color.White,
-                        shadowElevation = 2.dp
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.padding(24.dp)) {
-                            Text(text = "Invoice #${data.orderCode}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                            Text(text = "Date: ${data.issuedAt} • Store: ${data.storeName}", style = MaterialTheme.typography.bodySmall, color = NeutralGray)
-                            Text(text = "Status: ${data.paymentStatus}", style = MaterialTheme.typography.bodySmall, color = PrimaryBlue, fontWeight = FontWeight.Bold)
-                            
-                            Spacer(modifier = Modifier.height(24.dp))
-                            
-                            data.items.forEach { item ->
-                                ReceiptItem(item.name, "Qty: ${item.quantity} • Price: ₹${item.unitPrice}", "₹${item.lineTotal}")
-                            }
-                            
-                            Spacer(modifier = Modifier.height(24.dp))
-                            HorizontalDivider(color = Color(0xFFF3F4F6))
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            ReceiptRow("Subtotal", "₹${data.subtotal}")
-                            ReceiptRow("GST / Tax", "₹${data.taxTotal}")
-                            ReceiptRow("Discount", "-₹${data.discountTotal}", valueColor = SuccessGreen)
-                            
-                            Spacer(modifier = Modifier.height(24.dp))
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(text = "Grand Total", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                Text(text = "₹${data.grandTotal}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-                            }
-                        }
-                    }
-                }
-                is ApiResult.Loading -> {
-                    Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-                else -> {
-                    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                        Text(text = "Failed to load receipt details.", color = MaterialTheme.colorScheme.error)
+                        Text(
+                            text = "Grand Total",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NeutralDark
+                        )
+                        Text(
+                            text = "₹28,406.46",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryBlue
+                        )
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(32.dp))
-            
-            CartviaButton(
-                text = "Download PDF Receipt",
-                onClick = { /* TODO */ }
-            )
+
+            Button(
+                onClick = { /* Download PDF */ },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                Text(
+                    text = "Download PDF Receipt",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
 @Composable
-private fun ReceiptItem(name: String, qty: String, price: String) {
+private fun ReceiptItemRow(name: String, details: String, price: String) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
     ) {
-        Column {
-            Text(text = name, fontWeight = FontWeight.Bold)
-            Text(text = qty, style = MaterialTheme.typography.bodySmall, color = NeutralGray)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NeutralDark)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(text = details, fontSize = 13.sp, color = NeutralGray)
         }
-        Text(text = price, fontWeight = FontWeight.Bold)
+        Text(text = price, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NeutralDark)
     }
 }
 
 @Composable
-private fun ReceiptRow(label: String, value: String, valueColor: Color = Color.Black) {
+private fun ReceiptBreakdownRow(label: String, value: String, valueColor: Color = NeutralDark) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, color = NeutralGray, style = MaterialTheme.typography.bodyMedium)
-        Text(text = value, fontWeight = FontWeight.SemiBold, color = valueColor)
+        Text(text = label, fontSize = 14.sp, color = NeutralGray)
+        Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = valueColor)
     }
 }

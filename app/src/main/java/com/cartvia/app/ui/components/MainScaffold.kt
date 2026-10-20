@@ -1,25 +1,27 @@
 package com.cartvia.app.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CropFree
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -42,36 +44,30 @@ fun CartviaTopAppBar(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onBackground
             )
         },
         actions = {
             IconButton(onClick = onNotificationClick) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Notifications",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            IconButton(onClick = onProfileClick) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Profile / Settings",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surface),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = "Notifications",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         },
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.background
         )
-    )
-}
-
-@Composable
-fun CartviaDivider() {
-    HorizontalDivider(
-        thickness = 1.dp,
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     )
 }
 
@@ -80,83 +76,198 @@ fun CartviaBottomNavigationBar(
     navController: NavController,
     currentDestination: NavDestination?
 ) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
     ) {
-        val items = listOf(
-            NavigationItem(
-                label = "Home",
-                icon = Icons.Default.Home,
-                route = Screen.Home
-            ),
-            NavigationItem(
-                label = "Catalog",
-                icon = Icons.Default.List,
-                route = Screen.List
-            ),
-            NavigationItem(
-                label = "Current Cart",
-                icon = Icons.Default.ShoppingCart,
-                route = Screen.ShoppingBag
-            ),
-            NavigationItem(
-                label = "Session Scanner",
-                icon = Icons.Default.QrCode,
-                route = Screen.ScanAndGo
-            ),
-            NavigationItem(
-                label = "Store Map",
-                icon = Icons.Default.Map,
-                route = Screen.LocateShop
-            )
-        )
-
-        items.forEach { item ->
-            val isSelected = currentDestination?.hierarchy?.any { it.hasRoute(item.route::class) } == true
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = item.label,
-                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                },
-                label = {
-                    Text(
-                        text = item.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                },
-                selected = isSelected,
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                ),
-                onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 16.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 1. Home
+                val isHomeSelected = currentDestination?.hierarchy?.any { it.hasRoute(Screen.Home::class) } == true
+                NavPillItem(
+                    label = "Home",
+                    icon = Icons.Default.Home,
+                    isSelected = isHomeSelected,
+                    onClick = {
+                        navController.navigate(Screen.Home) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
+                    }
+                )
+
+                // 2. List
+                val isListSelected = currentDestination?.hierarchy?.any { it.hasRoute(Screen.MyList::class) || it.hasRoute(Screen.List::class) } == true
+                NavPillItem(
+                    label = "List",
+                    icon = Icons.Default.List,
+                    isSelected = isListSelected,
+                    onClick = {
+                        navController.navigate(Screen.MyList) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+
+                // 3. Center Scan Button
+                val isScanSelected = currentDestination?.hierarchy?.any { it.hasRoute(Screen.ScanAndGo::class) } == true
+                if (isScanSelected) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFF635BFF),
+                        onClick = {
+                            navController.navigate(Screen.ScanAndGo) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CropFree,
+                                contentDescription = "Scan",
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Scan",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF635BFF))
+                            .clickable {
+                                navController.navigate(Screen.ScanAndGo) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CropFree,
+                            contentDescription = "Scan & Go",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
-            )
+
+                // 4. Map
+                val isMapSelected = currentDestination?.hierarchy?.any { it.hasRoute(Screen.NearbyStores::class) || it.hasRoute(Screen.LocateShop::class) } == true
+                NavPillItem(
+                    label = "Map",
+                    icon = Icons.Default.Map,
+                    isSelected = isMapSelected,
+                    onClick = {
+                        navController.navigate(Screen.NearbyStores) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+
+                // 5. Profile
+                val isProfileSelected = currentDestination?.hierarchy?.any { it.hasRoute(Screen.Profile::class) } == true
+                NavPillItem(
+                    label = "Profile",
+                    icon = Icons.Default.Person,
+                    isSelected = isProfileSelected,
+                    onClick = {
+                        navController.navigate(Screen.Profile) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+            }
         }
     }
 }
 
-private data class NavigationItem(
-    val label: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val route: Any
-)
+@Composable
+private fun NavPillItem(
+    label: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    if (isSelected) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+            onClick = onClick
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = label,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
+        }
+    } else {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
 
 @Composable
 fun MainScaffold(
@@ -170,54 +281,35 @@ fun MainScaffold(
     val showBars = currentDestination?.hierarchy?.any { dest ->
         dest.hasRoute(Screen.Home::class) ||
         dest.hasRoute(Screen.List::class) ||
+        dest.hasRoute(Screen.MyList::class) ||
         dest.hasRoute(Screen.ShoppingBag::class) ||
         dest.hasRoute(Screen.ScanAndGo::class) ||
-        dest.hasRoute(Screen.LocateShop::class)
+        dest.hasRoute(Screen.LocateShop::class) ||
+        dest.hasRoute(Screen.NearbyStores::class) ||
+        dest.hasRoute(Screen.Profile::class) ||
+        dest.hasRoute(Screen.Notifications::class) ||
+        dest.hasRoute(Screen.SupportFaq::class) ||
+        dest.hasRoute(Screen.OrderHistory::class)
     } == true
 
-    val screenTitle = when {
-        currentDestination?.hierarchy?.any { it.hasRoute(Screen.Home::class) } == true -> "Home"
-        currentDestination?.hierarchy?.any { it.hasRoute(Screen.List::class) } == true -> "Catalog"
-        currentDestination?.hierarchy?.any { it.hasRoute(Screen.ShoppingBag::class) } == true -> "Current Cart"
-        currentDestination?.hierarchy?.any { it.hasRoute(Screen.ScanAndGo::class) } == true -> "Session Scanner"
-        currentDestination?.hierarchy?.any { it.hasRoute(Screen.LocateShop::class) } == true -> "Store Map"
-        else -> "Cartvia"
-    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        content(PaddingValues())
 
-    Scaffold(
-        modifier = Modifier.background(MaterialTheme.colorScheme.background),
-        topBar = {
-            if (showBars) {
-                CartviaTopAppBar(
-                    title = screenTitle,
-                    onNotificationClick = { /* Handle notification click */ },
-                    onProfileClick = {
-                        navController.navigate(Screen.Profile) {
-                            launchSingleTop = true
-                        }
-                    }
+        if (showBars) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+            ) {
+                CartviaBottomNavigationBar(
+                    navController = navController,
+                    currentDestination = currentDestination
                 )
             }
-        },
-        bottomBar = {
-            if (showBars) {
-                Column {
-                    CartviaDivider()
-                    CartviaBottomNavigationBar(
-                        navController = navController,
-                        currentDestination = currentDestination
-                    )
-                }
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            content(innerPadding)
         }
     }
 }

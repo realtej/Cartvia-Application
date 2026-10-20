@@ -5,12 +5,12 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.cartvia.app.data.model.UserSummaryDto
+import com.cartvia.app.data.model.ShoppingListResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.Serializable
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,6 +41,8 @@ class TokenManager @Inject constructor(@ApplicationContext private val context: 
         private const val USER_DATA = "user_data"
         private const val PREFERENCES_DATA = "user_preferences"
         private const val ONBOARDING_COMPLETED = "onboarding_completed"
+        private const val SAVED_SHOPPING_LIST = "saved_shopping_list"
+        private const val SAVED_SHOPPING_LISTS = "saved_shopping_lists"
     }
 
     fun isOnboardingCompletedSync(): Boolean = sharedPrefs.getBoolean(ONBOARDING_COMPLETED, false)
@@ -66,6 +68,40 @@ class TokenManager @Inject constructor(@ApplicationContext private val context: 
         val jsonStr = json.encodeToString(prefs)
         sharedPrefs.edit().putString(PREFERENCES_DATA, jsonStr).apply()
         _preferences.value = prefs
+    }
+
+    fun getSavedShoppingListSync(): ShoppingListResponse? {
+        return sharedPrefs.getString(SAVED_SHOPPING_LIST, null)?.let {
+            try {
+                json.decodeFromString<ShoppingListResponse>(it)
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    suspend fun saveShoppingList(list: ShoppingListResponse?) = withContext(Dispatchers.IO) {
+        if (list == null) {
+            sharedPrefs.edit().remove(SAVED_SHOPPING_LIST).apply()
+        } else {
+            val str = json.encodeToString(list)
+            sharedPrefs.edit().putString(SAVED_SHOPPING_LIST, str).apply()
+        }
+    }
+
+    fun getSavedShoppingListsSync(): List<ShoppingListResponse> {
+        return sharedPrefs.getString(SAVED_SHOPPING_LISTS, null)?.let {
+            try {
+                json.decodeFromString<List<ShoppingListResponse>>(it)
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } ?: emptyList()
+    }
+
+    suspend fun saveShoppingLists(lists: List<ShoppingListResponse>) = withContext(Dispatchers.IO) {
+        val str = json.encodeToString(lists)
+        sharedPrefs.edit().putString(SAVED_SHOPPING_LISTS, str).apply()
     }
 
     private val _userData = MutableStateFlow<UserSummaryDto?>(null)
@@ -96,7 +132,6 @@ class TokenManager @Inject constructor(@ApplicationContext private val context: 
         }
     }
 
-    // Keep compatibility for flows if needed, but provide async access for interceptors without eager loading
     val accessToken: Flow<String?> = flow { emit(getAccessTokenSync()) }.flowOn(Dispatchers.IO)
     val refreshToken: Flow<String?> = flow { emit(getRefreshTokenSync()) }.flowOn(Dispatchers.IO)
 

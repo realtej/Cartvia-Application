@@ -1,45 +1,98 @@
 package com.cartvia.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.cartvia.app.ui.components.CartviaAppTopBar
+import androidx.compose.ui.unit.sp
+import com.cartvia.app.ui.theme.BackgroundGray
+import com.cartvia.app.ui.theme.BorderGray
+import com.cartvia.app.ui.theme.LightGreenBg
+import com.cartvia.app.ui.theme.NeutralDark
 import com.cartvia.app.ui.theme.NeutralGray
 import com.cartvia.app.ui.theme.PrimaryBlue
 import com.cartvia.app.ui.theme.SecondaryBlue
 import com.cartvia.app.ui.theme.SuccessGreen
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.runtime.*
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderHistoryScreen(
     onNavigateToReceipt: (String) -> Unit,
     onBack: () -> Unit
 ) {
-    val orders = emptyList<Order>()
+    val historyItems = listOf(
+        HistoryCardData(
+            id = "INV-2026-004",
+            cartTitle = "Cart #12 (Current)",
+            badge = "SUCCESS",
+            isSuccess = true,
+            isCurrent = true,
+            date = "Oct 24, 2026 • 11:32 AM",
+            summary = "AeroSound Max, Hydro Fla...",
+            price = "₹28,406.46"
+        ),
+        HistoryCardData(
+            id = "INV-2026-003",
+            cartTitle = "Cart #09",
+            badge = "DELIVERED",
+            isSuccess = false,
+            isCurrent = false,
+            date = "Oct 10, 2026 • 04:15 PM",
+            summary = "Tech Organiser Pouch",
+            price = "₹1,299.00"
+        ),
+        HistoryCardData(
+            id = "INV-2026-002",
+            cartTitle = "Cart #05",
+            badge = "DELIVERED",
+            isSuccess = false,
+            isCurrent = false,
+            date = "Sep 28, 2026 • 02:45 PM",
+            summary = "Minimalist Wallet, USB-C D...",
+            price = "₹12,450.00"
+        )
+    )
 
     Scaffold(
+        containerColor = BackgroundGray,
         topBar = {
-            CartviaAppTopBar(
-                title = "Order History",
-                onBack = onBack
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Order History",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeutralDark
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color.White),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = NeutralDark, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = BackgroundGray)
             )
         }
     ) { padding ->
@@ -47,95 +100,106 @@ fun OrderHistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
+            contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp)
         ) {
-            items(orders) { order ->
-                OrderCard(order, onNavigateToReceipt)
+            items(historyItems) { item ->
+                OrderHistoryCard(item, onClick = { onNavigateToReceipt(item.id) })
             }
         }
     }
 }
 
 @Composable
-private fun OrderCard(order: Order, onNavigateToReceipt: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Card(
+fun OrderHistoryCard(
+    data: HistoryCardData,
+    onClick: () -> Unit
+) {
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (order.isCurrent) Modifier.border(1.dp, PrimaryBlue, RoundedCornerShape(16.dp)) else Modifier)
-            .clickable { expanded = !expanded },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(
+            if (data.isCurrent) 1.5.dp else 1.dp,
+            if (data.isCurrent) PrimaryBlue else BorderGray
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(text = "Cart #${order.id} ${if (order.isCurrent) "(Current)" else ""}", fontWeight = FontWeight.Bold)
-                    Text(text = order.date, style = MaterialTheme.typography.bodySmall, color = NeutralGray)
+                    Text(
+                        text = data.cartTitle,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeutralDark
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = data.date,
+                        fontSize = 13.sp,
+                        color = NeutralGray
+                    )
                 }
-                Badge(
-                    containerColor = if (order.status == "SUCCESS") SuccessGreen.copy(alpha = 0.1f) else SecondaryBlue,
-                    contentColor = if (order.status == "SUCCESS") SuccessGreen else PrimaryBlue
+
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (data.isSuccess) LightGreenBg else SecondaryBlue
                 ) {
-                    Text(text = order.status, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color(0xFFF3F4F6))
-            
-            AnimatedVisibility(visible = expanded) {
-                Column(modifier = Modifier.padding(vertical = 12.dp)) {
-                    order.itemizedList.forEach { item ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(text = "${item.quantity}x ${item.name}", style = MaterialTheme.typography.bodySmall)
-                            Text(text = item.price, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(color = Color(0xFFF3F4F6))
+                    Text(
+                        text = data.badge,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (data.isSuccess) SuccessGreen else PrimaryBlue,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            
+
+            HorizontalDivider(color = BorderGray)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    if (!expanded) {
-                        Text(text = order.itemsSummary, style = MaterialTheme.typography.bodySmall, color = NeutralGray)
-                    }
-                    Text(text = order.total, fontWeight = FontWeight.Bold, color = Color.Black)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = data.summary,
+                        fontSize = 14.sp,
+                        color = NeutralGray
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = data.price,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeutralDark
+                    )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = { onNavigateToReceipt(order.id) },
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFF3F4F6))
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "View Receipt")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFF1F5F9)),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (expanded) "Collapse" else "Expand",
-                        tint = NeutralGray
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = "View",
+                        tint = NeutralDark,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -143,18 +207,13 @@ private fun OrderCard(order: Order, onNavigateToReceipt: (String) -> Unit) {
     }
 }
 
-data class Order(
+data class HistoryCardData(
     val id: String,
-    val date: String,
-    val total: String,
-    val itemsSummary: String,
-    val status: String,
+    val cartTitle: String,
+    val badge: String,
+    val isSuccess: Boolean,
     val isCurrent: Boolean,
-    val itemizedList: List<OrderItem> = emptyList()
-)
-
-data class OrderItem(
-    val name: String,
-    val quantity: Int,
+    val date: String,
+    val summary: String,
     val price: String
 )

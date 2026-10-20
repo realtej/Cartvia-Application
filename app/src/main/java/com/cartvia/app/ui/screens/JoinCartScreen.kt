@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.cartvia.app.data.remote.ApiErrorCode
 import com.cartvia.app.ui.components.BarcodeScannerView
-import com.cartvia.app.ui.components.PermissionDialog
+import com.cartvia.app.ui.components.CartConnectionPermissionDialog
 import com.cartvia.app.ui.components.StoreTrafficBadge
 import com.cartvia.app.util.ApiResult
 import kotlinx.coroutines.delay
@@ -55,10 +55,7 @@ fun JoinCartScreen(
     )
 
     if (showPermissionRationale) {
-        PermissionDialog(
-            appName = "Cartvia",
-            permissionName = "Camera",
-            description = "Camera access is required to scan QR codes on your trolley for a seamless shopping experience.",
+        CartConnectionPermissionDialog(
             onAllow = {
                 showPermissionRationale = false
                 launcher.launch(Manifest.permission.CAMERA)

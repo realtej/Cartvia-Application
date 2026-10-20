@@ -1,8 +1,10 @@
 package com.cartvia.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -19,7 +21,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.cartvia.app.ui.components.*
+import com.cartvia.app.ui.theme.BackgroundGray
+import com.cartvia.app.ui.theme.BorderGray
+import com.cartvia.app.ui.theme.NeutralDark
 import com.cartvia.app.ui.theme.NeutralGray
 import com.cartvia.app.ui.theme.PrimaryBlue
 import com.cartvia.app.util.ApiResult
@@ -33,6 +39,7 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var rememberMe by remember { mutableStateOf(false) }
     var isPasswordVisible by remember { mutableStateOf(false) }
     
     var showDevDialog by remember { mutableStateOf(false) }
@@ -116,25 +123,29 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(BackgroundGray)
             .padding(24.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(48.dp))
         
         Text(
             text = "Welcome Back",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = NeutralDark
         )
+        
+        Spacer(modifier = Modifier.height(8.dp))
         
         Text(
             text = "Sign in to access your digital wallet",
-            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 15.sp,
             color = NeutralGray
         )
         
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(40.dp))
         
         CartviaInputField(
             value = email,
@@ -144,7 +155,7 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth()
         )
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         
         CartviaInputField(
             value = password,
@@ -157,7 +168,7 @@ fun LoginScreen(
                 IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                     Icon(
                         imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                        contentDescription = null,
+                        contentDescription = "Toggle password visibility",
                         tint = NeutralGray
                     )
                 }
@@ -168,25 +179,75 @@ fun LoginScreen(
         
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { rememberMe = !rememberMe }
+            ) {
+                Checkbox(
+                    checked = rememberMe,
+                    onCheckedChange = { rememberMe = it },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = PrimaryBlue,
+                        uncheckedColor = NeutralGray
+                    ),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Remember me",
+                    fontSize = 14.sp,
+                    color = NeutralGray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
             Text(
                 text = "Forgot Password?",
-                style = MaterialTheme.typography.bodySmall,
+                fontSize = 14.sp,
                 color = PrimaryBlue,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable(onClick = onForgotPasswordClick)
             )
         }
         
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(32.dp))
         
-        CartviaButton(
-            text = "Sign In",
-            onClick = { viewModel.login(email, password) }
-        )
+        Button(
+            onClick = { viewModel.login(email, password) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+        ) {
+            Text(
+                text = "Sign In",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = BorderGray)
+            Text(
+                text = "Or connect via",
+                fontSize = 13.sp,
+                color = NeutralGray,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f), color = BorderGray)
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
         
         Text(
             text = buildAnnotatedString {
@@ -195,7 +256,7 @@ fun LoginScreen(
                     append("Sign Up")
                 }
             },
-            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 15.sp,
             color = NeutralGray,
             modifier = Modifier.clickable(onClick = onRegisterClick)
         )
@@ -206,7 +267,7 @@ fun LoginScreen(
             Text(
                 text = "Developer Bypass",
                 color = PrimaryBlue,
-                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }

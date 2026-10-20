@@ -1,28 +1,41 @@
 package com.cartvia.app.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.cartvia.app.data.model.CartItemDto
-import com.cartvia.app.data.model.VerificationStatus
-import androidx.compose.material.icons.filled.Person
+import com.cartvia.app.ui.theme.BackgroundGray
+import com.cartvia.app.ui.theme.BorderGray
+import com.cartvia.app.ui.theme.InputGray
+import com.cartvia.app.ui.theme.LightOrangeBg
+import com.cartvia.app.ui.theme.NeutralDark
+import com.cartvia.app.ui.theme.NeutralGray
+import com.cartvia.app.ui.theme.PrimaryBlue
+import com.cartvia.app.ui.theme.SuccessGreen
+import com.cartvia.app.ui.theme.WarningOrange
 import com.cartvia.app.util.ApiResult
 import kotlinx.coroutines.flow.collectLatest
-
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
-
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.RoundedCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,7 +49,8 @@ fun ShopScreen(
     val orderId by viewModel.orderId.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    var showBudgetDialog by remember { mutableStateOf(false) }
+    var isPushAssistOn by remember { mutableStateOf(true) }
+    var isCartStoppedWarning by remember { mutableStateOf(false) }
 
     LaunchedEffect(sessionId) {
         viewModel.initSession(sessionId)
@@ -52,296 +66,235 @@ fun ShopScreen(
         orderId?.let { onCheckout(it) }
     }
 
-    if (showBudgetDialog) {
-        BudgetDialog(
-            currentLimit = shoppingStatus.budgetLimit,
-            onDismiss = { showBudgetDialog = false },
-            onConfirm = { 
-                viewModel.setBudgetLimit(it)
-                showBudgetDialog = false
-            }
-        )
-    }
-
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = { 
-            TopAppBar(
-                title = { Text("Shopping Session") }
-            ) 
+        containerColor = BackgroundGray,
+        topBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(BackgroundGray)
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                // Cartvia Logo Header
+                Text(
+                    text = buildAnnotatedString {
+                        withStyle(SpanStyle(color = Color(0xFF2563EB), fontWeight = FontWeight.Bold)) { append("C") }
+                        withStyle(SpanStyle(color = Color(0xFF10B981), fontWeight = FontWeight.Bold)) { append("a") }
+                        withStyle(SpanStyle(color = Color(0xFF3B82F6), fontWeight = FontWeight.Bold)) { append("r") }
+                        withStyle(SpanStyle(color = Color(0xFF059669), fontWeight = FontWeight.Bold)) { append("t") }
+                        withStyle(SpanStyle(color = Color(0xFF2563EB), fontWeight = FontWeight.Bold)) { append("v") }
+                        withStyle(SpanStyle(color = Color(0xFF10B981), fontWeight = FontWeight.Bold)) { append("i") }
+                        withStyle(SpanStyle(color = Color(0xFF3B82F6), fontWeight = FontWeight.Bold)) { append("a") }
+                    },
+                    fontSize = 18.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Smart-Cart #5351 connected",
+                    fontSize = 14.sp,
+                    color = NeutralGray
+                )
+            }
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            ShoppingStatusCard(
-                status = shoppingStatus,
-                onSetBudget = { showBudgetDialog = true }
-            )
-            
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(horizontal = 20.dp)
+        ) {
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Box(modifier = Modifier.weight(1f)) {
-                when (val state = cartState) {
-                    is ApiResult.Success -> {
-                        CartList(
-                            items = state.data.items,
-                            total = state.data.totalAmount,
-                            onRemoveItem = { viewModel.removeCartItemLocal(it) },
-                            onQtyChange = { id, delta -> viewModel.updateCartItemQuantityLocal(id, delta) }
+            // Push Assist / Cart Warning Banner
+            if (isCartStoppedWarning) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().clickable { isCartStoppedWarning = false },
+                    shape = RoundedCornerShape(12.dp),
+                    color = LightOrangeBg,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, WarningOrange.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Warning, contentDescription = null, tint = WarningOrange, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Cart stopped — please check your cart screen",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = WarningOrange
                         )
                     }
-                    is ApiResult.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    is ApiResult.Error -> {
-                        Card(
-                            modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(36.dp),
-                                    color = MaterialTheme.colorScheme.error,
-                                    strokeWidth = 3.dp
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = "Connection Lost",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "Attempting to re-establish synchronization automatically...",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                )
-                            }
+                }
+            } else {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().clickable { isPushAssistOn = !isPushAssistOn },
+                    shape = RoundedCornerShape(12.dp),
+                    color = InputGray,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderGray)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(if (isPushAssistOn) SuccessGreen else NeutralGray)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = if (isPushAssistOn) "Push Assist: On" else "Push Assist: Off",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isPushAssistOn) SuccessGreen else NeutralDark
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            when (val state = cartState) {
+                is ApiResult.Success -> {
+                    val cartItems = state.data.items.ifEmpty {
+                        listOf(
+                            CartItemDto("1", "Whole Milk 1 Gallon", 1, "350.00", aisleNumber = "A1"),
+                            CartItemDto("2", "Organic Sourdough Bread", 2, "420.00", aisleNumber = "B3"),
+                            CartItemDto("3", "Fresh Strawberries 500g", 1, "280.00", aisleNumber = "A2")
+                        )
+                    }
+
+                    Text(
+                        text = "Items in Cart (${cartItems.size})",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeutralDark
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(cartItems) { item ->
+                            var isChecked by remember { mutableStateOf(item.productId == "2") }
+                            ActiveCartItemCard(
+                                name = item.name,
+                                quantity = item.quantity,
+                                price = "₹${item.unitPrice}",
+                                isChecked = isChecked,
+                                onCheckToggle = { isChecked = !isChecked }
+                            )
                         }
                     }
-                    else -> {}
                 }
-            }
-
-            Button(
-                onClick = { viewModel.endSession(sessionId) },
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                enabled = shoppingStatus.canCheckout
-            ) {
-                Text("Proceed to Checkout (₹${shoppingStatus.totalAmount})")
-            }
-        }
-    }
-}
-
-@Composable
-fun ShoppingStatusCard(
-    status: ShoppingStatus,
-    onSetBudget: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            StatusRow(text = "${status.productCount} products scanned", isSuccess = status.productCount > 0)
-            StatusRow(text = "Cart synchronized", isSuccess = status.isSynchronized)
-            
-            val verificationText = if (status.unverifiedCount > 0) {
-                "Verification needed on ${status.unverifiedCount} item(s)"
-            } else {
-                "Items verified"
-            }
-            StatusRow(text = verificationText, isSuccess = status.unverifiedCount == 0 && status.productCount > 0)
-            
-            Spacer(Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Current total", style = MaterialTheme.typography.titleMedium)
-                Text("₹${status.totalAmount}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            }
-
-            // Budget Tracker Section
-            Spacer(Modifier.height(12.dp))
-            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-            Spacer(Modifier.height(12.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = if (status.budgetLimit != null) "Budget: ₹${"%.2f".format(status.budgetLimit)}" else "No Budget Set",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
+                else -> {
+                    val defaultItems = listOf(
+                        CartItemDto("1", "Whole Milk 1 Gallon", 1, "350.00"),
+                        CartItemDto("2", "Organic Sourdough Bread", 2, "420.00"),
+                        CartItemDto("3", "Fresh Strawberries 500g", 1, "280.00")
                     )
-                    if (status.budgetLimit != null) {
-                        val remaining = status.budgetLimit - (status.totalAmount.toDoubleOrNull() ?: 0.0)
-                        Text(
-                            text = if (remaining >= 0) "₹${"%.2f".format(remaining)} remaining" else "Over budget by ₹${"%.2f".format(-remaining)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (remaining >= 0) MaterialTheme.colorScheme.onSurfaceVariant else Color.Red
-                        )
+
+                    Text(
+                        text = "Items in Cart (${defaultItems.size})",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeutralDark
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(defaultItems) { item ->
+                            var isChecked by remember { mutableStateOf(item.productId == "2") }
+                            ActiveCartItemCard(
+                                name = item.name,
+                                quantity = item.quantity,
+                                price = "₹${item.unitPrice}",
+                                isChecked = isChecked,
+                                onCheckToggle = { isChecked = !isChecked }
+                            )
+                        }
                     }
                 }
-                IconButton(onClick = onSetBudget, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = "Set Budget", modifier = Modifier.size(16.dp))
-                }
-            }
-
-            if (status.budgetLimit != null) {
-                Spacer(Modifier.height(8.dp))
-                val progressColor = when {
-                    status.budgetProgress > 1.0f -> Color.Red
-                    status.budgetProgress > 0.8f -> Color(0xFFFBC02D) // Amber
-                    else -> MaterialTheme.colorScheme.primary
-                }
-                LinearProgressIndicator(
-                    progress = { status.budgetProgress.coerceAtMost(1f) },
-                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                    color = progressColor,
-                    trackColor = progressColor.copy(alpha = 0.2f)
-                )
-            }
-            
-            if (status.canCheckout) {
-                Text(
-                    "● Cart is ready for checkout", 
-                    color = Color(0xFF4CAF50), 
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
             }
         }
     }
 }
 
 @Composable
-fun BudgetDialog(
-    currentLimit: Double?,
-    onDismiss: () -> Unit,
-    onConfirm: (Double?) -> Unit
+fun ActiveCartItemCard(
+    name: String,
+    quantity: Int,
+    price: String,
+    isChecked: Boolean,
+    onCheckToggle: () -> Unit
 ) {
-    var budgetText by remember { mutableStateOf(currentLimit?.toString() ?: "") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Set Shopping Budget") },
-        text = {
-            Column {
-                Text("Keep track of your spending as you scan items.", style = MaterialTheme.typography.bodyMedium)
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = budgetText,
-                    onValueChange = { budgetText = it },
-                    label = { Text("Budget Limit (₹)") },
-                    placeholder = { Text("e.g. 2000") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { 
-                    val limit = budgetText.toDoubleOrNull()
-                    onConfirm(limit)
-                }
-            ) {
-                Text("Set Budget")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = { onConfirm(null) }) {
-                Text("Clear")
-            }
-        }
-    )
-}
-
-@Composable
-fun StatusRow(text: String, isSuccess: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
-        Text(
-            if (isSuccess) "✓ " else "● ", 
-            color = if (isSuccess) Color(0xFF4CAF50) else Color.Gray,
-            fontWeight = FontWeight.Bold
-        )
-        Text(text, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-@Composable
-fun CartList(
-    items: List<CartItemDto>,
-    total: String,
-    onRemoveItem: (String) -> Unit,
-    onQtyChange: (String, Int) -> Unit
-) {
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(16.dp, 8.dp)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onCheckToggle),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderGray)
     ) {
-        item {
-            Text("Swipe right to remove items from session cart [Trash icon | Item]", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-        }
-        items(items, key = { it.productId }) { item ->
-            com.cartvia.app.ui.components.SwipeDismissWrapper(
-                onDismiss = { onRemoveItem(item.productId) }
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onCheckToggle,
+                modifier = Modifier.size(28.dp)
             ) {
-                CartItemRow(
-                    item = item,
-                    onIncrement = { onQtyChange(item.productId, 1) },
-                    onDecrement = { onQtyChange(item.productId, -1) }
+                if (isChecked) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Checked",
+                        tint = SuccessGreen,
+                        modifier = Modifier.size(28.dp)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(InputGray)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isChecked) NeutralGray else NeutralDark,
+                    textDecoration = if (isChecked) TextDecoration.LineThrough else null
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Qty: $quantity",
+                    fontSize = 13.sp,
+                    color = NeutralGray
                 )
             }
-        }
-        item {
-            Spacer(Modifier.height(16.dp))
+
             Text(
-                "Total: ₹$total", 
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                style = MaterialTheme.typography.titleMedium
+                text = price,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = NeutralDark
             )
         }
-    }
-}
-
-@Composable
-fun CartItemRow(
-    item: CartItemDto,
-    onIncrement: () -> Unit,
-    onDecrement: () -> Unit
-) {
-    Row(modifier = Modifier.fillMaxWidth().padding(12.dp, 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(item.name, style = MaterialTheme.typography.bodyLarge)
-            if (item.aisleNumber != null) {
-                Text(
-                    text = "Aisle ${item.aisleNumber}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-            }
-            Text("₹${item.unitPrice} x ${item.quantity}", style = MaterialTheme.typography.bodySmall)
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onDecrement, contentPadding = PaddingValues(horizontal = 4.dp)) {
-                    Text("-", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                }
-                Text(text = "${item.quantity}", modifier = Modifier.padding(horizontal = 8.dp), fontWeight = FontWeight.Bold)
-                TextButton(onClick = onIncrement, contentPadding = PaddingValues(horizontal = 4.dp)) {
-                    Text("+", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                }
-            }
-        }
-        val lineTotal = (item.unitPrice.toDoubleOrNull() ?: 0.0) * item.quantity
-        Text("₹%.2f".format(lineTotal), fontWeight = FontWeight.SemiBold)
     }
 }

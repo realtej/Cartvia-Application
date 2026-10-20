@@ -9,7 +9,7 @@ sealed class Screen {
     @Serializable object ForgotPassword
     @Serializable object Home
     @Serializable object ShoppingBag
-    @Serializable object List
+    @Serializable data class List(val listId: String = "")
     @Serializable object MyList
     @Serializable object ScanAndGo
     @Serializable object LocateShop
@@ -23,4 +23,7 @@ sealed class Screen {
     @Serializable object Profile
     @Serializable data class StoreHeatmap(val storeId: String)
     @Serializable object NearbyStores
+    @Serializable object Notifications
+    @Serializable object SupportFaq
+    @Serializable data class SessionEnded(val cartId: String, val finalBill: String)
 }

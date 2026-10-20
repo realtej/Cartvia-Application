@@ -2,25 +2,21 @@ package com.cartvia.app.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cartvia.app.data.local.LocalListRepository
 import com.cartvia.app.data.model.ProductResponse
+import com.cartvia.app.data.model.ShoppingListItemDto
 import com.cartvia.app.data.model.ShoppingListResponse
-import com.cartvia.app.data.repository.AuthRepository
-import com.cartvia.app.data.repository.ProductRepository
-import com.cartvia.app.data.repository.ShoppingListRepository
 import com.cartvia.app.util.ApiResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
 class ShoppingListViewModel @Inject constructor(
-    private val shoppingListRepository: ShoppingListRepository,
-    private val productRepository: ProductRepository,
-    private val authRepository: AuthRepository
+    private val localListRepository: LocalListRepository
 ) : ViewModel() {
 
     private val _listState = MutableStateFlow<ApiResult<ShoppingListResponse>?>(null)
@@ -29,90 +25,108 @@ class ShoppingListViewModel @Inject constructor(
     private val _searchResults = MutableStateFlow<List<ProductResponse>>(emptyList())
     val searchResults = _searchResults.asStateFlow()
 
-    private val _templates = MutableStateFlow<List<String>>(emptyList())
-    val templates = _templates.asStateFlow()
+    var currentListId: String = ""
 
-    private val _shareCode = MutableStateFlow<String?>(null)
-    val shareCode = _shareCode.asStateFlow()
-
-    fun loadList() {
-        viewModelScope.launch {
-            val userId = authRepository.currentUser.firstOrNull()?.id ?: "guest-user"
-            _listState.value = ApiResult.Loading
-            _listState.value = shoppingListRepository.getOrCreateList(userId)
-        }
-    }
-
-    fun saveAsTemplate(name: String) {
-        if (name.isNotBlank() && !_templates.value.contains(name)) {
-            _templates.value = _templates.value + name
-        }
-    }
-
-    fun loadTemplate(name: String) {
+    fun loadList(listId: String) {
+        currentListId = listId
         viewModelScope.launch {
             _listState.value = ApiResult.Loading
-            // In a real app, this would fetch template items from a DB or API
-            delay(500) 
-            _listState.value = shoppingListRepository.addBatchItemsLocal(emptyList())
-        }
-    }
-
-    fun shareList() {
-        _shareCode.value = "CART-${(1000..9999).random()}"
-    }
-
-    fun clearShareCode() {
-        _shareCode.value = null
-    }
-
-    fun searchProducts(query: String) {
-        if (query.length < 2) {
-            _searchResults.value = emptyList()
-            return
-        }
-        viewModelScope.launch {
-            val result = productRepository.getProducts(null, query, null, 0, 10)
-            if (result is ApiResult.Success) {
-                _searchResults.value = result.data.content
+            val localList = localListRepository.getList(listId)
+            if (localList != null) {
+                _listState.value = ApiResult.Success(localList)
+            } else {
+                val fallback = ShoppingListResponse(
+                    id = listId.ifBlank { UUID.randomUUID().toString() },
+                    name = "Shopping List",
+                    items = emptyList()
+                )
+                localListRepository.saveList(fallback)
+                _listState.value = ApiResult.Success(fallback)
             }
         }
     }
 
-    fun addItem(productId: String? = null, customName: String? = null) {
-        val currentList = (_listState.value as? ApiResult.Success)?.data ?: ShoppingListResponse("offline-list-id", "Offline List", emptyList())
+    fun saveCurrentState() {
+        val current = (_listState.value as? ApiResult.Success)?.data ?: return
+        localListRepository.saveList(current)
+    }
+
+    fun createNewListWithName(name: String) {
         viewModelScope.launch {
-            _listState.value = shoppingListRepository.addItem(currentList.id, productId, customName)
-            _searchResults.value = emptyList()
+            val newList = ShoppingListResponse(
+                id = currentListId.ifBlank { UUID.randomUUID().toString() },
+                name = name,
+                items = emptyList()
+            )
+            localListRepository.saveList(newList)
+            currentListId = newList.id
+            _listState.value = ApiResult.Success(newList)
+        }
+    }
+
+    fun deleteCurrentList() {
+        viewModelScope.launch {
+            val current = (_listState.value as? ApiResult.Success)?.data ?: return@launch
+            localListRepository.deleteList(current.id)
+            _listState.value = ApiResult.Success(ShoppingListResponse("", "", emptyList()))
+        }
+    }
+
+    fun addItemCustom(name: String, quantity: Int, unit: String, substituteAllowed: Boolean, isUrgent: Boolean) {
+        viewModelScope.launch {
+            val current = (_listState.value as? ApiResult.Success)?.data ?: return@launch
+            val newItem = ShoppingListItemDto(
+                id = UUID.randomUUID().toString(),
+                productId = null,
+                name = name,
+                aisleNumber = "$quantity $unit",
+                sectionName = if (isUrgent) "Urgent" else "General",
+                purchased = false,
+                purchasedAt = null
+            )
+            val updated = current.copy(items = current.items + newItem)
+            localListRepository.saveList(updated) // Auto-save locally
+            _listState.value = ApiResult.Success(updated)
+        }
+    }
+
+    fun updateItemCustom(itemId: String, name: String, quantity: Int, unit: String, substituteAllowed: Boolean, isUrgent: Boolean) {
+        viewModelScope.launch {
+            val current = (_listState.value as? ApiResult.Success)?.data ?: return@launch
+            val updatedItems = current.items.map {
+                if (it.id == itemId) {
+                    it.copy(
+                        name = name,
+                        aisleNumber = "$quantity $unit",
+                        sectionName = if (isUrgent) "Urgent" else "General"
+                    )
+                } else it
+            }
+            val updated = current.copy(items = updatedItems)
+            localListRepository.saveList(updated) // Auto-save locally
+            _listState.value = ApiResult.Success(updated)
         }
     }
 
     fun toggleItem(itemId: String, purchased: Boolean) {
         viewModelScope.launch {
-            _listState.value = shoppingListRepository.updateItem(itemId, purchased)
+            val current = (_listState.value as? ApiResult.Success)?.data ?: return@launch
+            val updatedItems = current.items.map {
+                if (it.id == itemId) it.copy(purchased = purchased) else it
+            }
+            val updated = current.copy(items = updatedItems)
+            localListRepository.saveList(updated) // Auto-save locally
+            _listState.value = ApiResult.Success(updated)
         }
     }
 
     fun removeItem(itemId: String) {
         viewModelScope.launch {
-            _listState.value = shoppingListRepository.deleteItemLocal(itemId)
-        }
-    }
-
-    fun generateListFromImageMock() {
-        viewModelScope.launch {
-            _listState.value = ApiResult.Loading
-            kotlinx.coroutines.delay(1000)
-            // Simulation: Results will be empty until real ML Kit integration
-            _listState.value = shoppingListRepository.addBatchItemsLocal(emptyList())
-        }
-    }
-    
-    fun createNewList() {
-        viewModelScope.launch {
-            val userId = authRepository.currentUser.firstOrNull()?.id ?: "guest-user"
-            _listState.value = ApiResult.Loading
-            _listState.value = shoppingListRepository.createNewList(userId)
+            val current = (_listState.value as? ApiResult.Success)?.data ?: return@launch
+            val updatedItems = current.items.filter { it.id != itemId }
+            val updated = current.copy(items = updatedItems)
+            localListRepository.saveList(updated) // Auto-save locally
+            _listState.value = ApiResult.Success(updated)
         }
     }
 }

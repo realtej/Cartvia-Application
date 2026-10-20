@@ -1,8 +1,10 @@
 package com.cartvia.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -12,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -19,13 +22,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.cartvia.app.data.model.RegisterRequest
 import com.cartvia.app.ui.components.*
+import com.cartvia.app.ui.theme.BackgroundGray
+import com.cartvia.app.ui.theme.NeutralDark
 import com.cartvia.app.ui.theme.NeutralGray
 import com.cartvia.app.ui.theme.PrimaryBlue
 import com.cartvia.app.util.ApiResult
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     viewModel: RegisterViewModel,
@@ -81,6 +86,7 @@ fun RegisterScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(BackgroundGray)
             .padding(24.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.Start
@@ -91,7 +97,8 @@ fun RegisterScreen(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back"
+                contentDescription = "Back",
+                tint = NeutralDark
             )
         }
         
@@ -99,17 +106,20 @@ fun RegisterScreen(
         
         Text(
             text = "Register",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = NeutralDark
         )
+        
+        Spacer(modifier = Modifier.height(8.dp))
         
         Text(
             text = "Create an account to continue!",
-            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 15.sp,
             color = NeutralGray
         )
         
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(28.dp))
         
         CartviaInputField(
             value = firstName,
@@ -162,17 +172,16 @@ fun RegisterScreen(
                 IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                     Icon(
                         imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                        contentDescription = null,
+                        contentDescription = "Toggle password visibility",
                         tint = NeutralGray
                     )
                 }
             }
         )
         
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(36.dp))
         
-        CartviaButton(
-            text = "Create Account",
+        Button(
             onClick = { 
                 viewModel.register(
                     RegisterRequest(
@@ -183,8 +192,20 @@ fun RegisterScreen(
                         password = password
                     )
                 )
-            }
-        )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+        ) {
+            Text(
+                text = "Create Account",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
         
         Spacer(modifier = Modifier.height(24.dp))
         
@@ -196,7 +217,7 @@ fun RegisterScreen(
                         append("Log in")
                     }
                 },
-                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 15.sp,
                 color = NeutralGray,
                 modifier = Modifier.clickable(onClick = onLoginClick)
             )

@@ -1,6 +1,5 @@
 package com.cartvia.app.ui.screens
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,519 +9,718 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DocumentScanner
-import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import com.cartvia.app.data.model.ProductResponse
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.cartvia.app.data.model.ShoppingListItemDto
+import com.cartvia.app.ui.components.CartviaInputField
 import com.cartvia.app.ui.components.SwipeDismissWrapper
+import com.cartvia.app.ui.theme.BackgroundGray
+import com.cartvia.app.ui.theme.BorderGray
+import com.cartvia.app.ui.theme.InputGray
+import com.cartvia.app.ui.theme.NeutralDark
+import com.cartvia.app.ui.theme.NeutralGray
+import com.cartvia.app.ui.theme.PrimaryBlue
+import com.cartvia.app.ui.theme.SuccessGreen
 import com.cartvia.app.util.ApiResult
-
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
-import androidx.compose.material.icons.filled.Share
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShoppingListScreen(
-    viewModel: ShoppingListViewModel
+    viewModel: ShoppingListViewModel = hiltViewModel(),
+    listId: String = "",
+    onBack: () -> Unit = {}
 ) {
     val listState by viewModel.listState.collectAsState()
-    val searchResults by viewModel.searchResults.collectAsState()
-    val templates by viewModel.templates.collectAsState()
-    val shareCode by viewModel.shareCode.collectAsState()
 
-    var showAddDialog by remember { mutableStateOf(false) }
-    var showCameraScanner by remember { mutableStateOf(false) }
-    var showTemplateDialog by remember { mutableStateOf(false) }
-    var showShareDialog by remember { mutableStateOf(false) }
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var tempListName by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        viewModel.loadList()
+    var showAddItemSheet by remember { mutableStateOf(false) }
+    var editingItem by remember { mutableStateOf<ShoppingListItemDto?>(null) }
+    var showShareSheet by remember { mutableStateOf(false) }
+    var showMenuDropdown by remember { mutableStateOf(false) }
+
+    LaunchedEffect(listId) {
+        viewModel.loadList(listId)
     }
 
-    if (showTemplateDialog) {
-        TemplateDialog(
-            templates = templates,
-            onDismiss = { showTemplateDialog = false },
-            onLoadTemplate = { name ->
-                viewModel.loadTemplate(name)
-                showTemplateDialog = false
+    if (showCreateDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreateDialog = false },
+            title = { Text("Create New List") },
+            text = {
+                OutlinedTextField(
+                    value = tempListName,
+                    onValueChange = { tempListName = it },
+                    placeholder = { Text("list name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             },
-            onSaveAsTemplate = { name ->
-                viewModel.saveAsTemplate(name)
-                showTemplateDialog = false
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (tempListName.isNotBlank()) {
+                            viewModel.createNewListWithName(tempListName)
+                            showCreateDialog = false
+                        }
+                    }
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateDialog = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }
 
-    if (showShareDialog || shareCode != null) {
-        ShareListDialog(
-            shareCode = shareCode,
-            onGenerate = { viewModel.shareList() },
-            onDismiss = { 
-                viewModel.clearShareCode()
-                showShareDialog = false 
-            }
-        )
-    }
+    val activeList = (listState as? ApiResult.Success)?.data
+    val isListCreated = activeList != null && activeList.name.isNotBlank() && activeList.id.isNotBlank()
 
     Scaffold(
+        containerColor = BackgroundGray,
         topBar = {
-            TopAppBar(
-                title = { Text("Shopping List / Wishlist") },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = if (isListCreated) activeList.name else "My List",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeutralDark
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        viewModel.saveCurrentState()
+                        onBack()
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = NeutralDark)
+                    }
+                },
                 actions = {
-                    IconButton(onClick = { showCameraScanner = true }) {
-                        Icon(Icons.Default.CameraAlt, contentDescription = "Live Cam OCR Scanner")
+                    if (isListCreated) {
+                        IconButton(onClick = { showShareSheet = true }) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Share, contentDescription = "Share", tint = NeutralDark, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        Box {
+                            IconButton(onClick = { showMenuDropdown = true }) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Menu, contentDescription = "Menu", tint = NeutralDark, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                            DropdownMenu(
+                                expanded = showMenuDropdown,
+                                onDismissRequest = { showMenuDropdown = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Delete List", color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        showMenuDropdown = false
+                                        viewModel.deleteCurrentList()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                    }
+                                )
+                            }
+                        }
                     }
-                    IconButton(onClick = { showTemplateDialog = true }) {
-                        Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = "Templates")
-                    }
-                    IconButton(onClick = { showShareDialog = true }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share List")
-                    }
-                    IconButton(onClick = { viewModel.createNewList() }) {
-                        Icon(Icons.Default.Delete, contentDescription = "New List")
-                    }
-                    IconButton(onClick = { viewModel.loadList() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = BackgroundGray)
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Item")
-            }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Text(
-                    text = "Method 1: Click + to Type Manual. Method 2: Click top Camera icon for Live ML OCR Scanner.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(16.dp, 8.dp)
-                )
-                
-                Box(modifier = Modifier.weight(1f)) {
-                    when (val state = listState) {
-                        is ApiResult.Success -> {
-                            val list = state.data
-                            if (list.items.isEmpty()) {
-                                EmptyListMessage(modifier = Modifier.align(Alignment.Center))
-                            } else {
-                                LazyColumn(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(16.dp, 8.dp)
-                                ) {
-                                    items(list.items, key = { it.id }) { item ->
-                                        SwipeDismissWrapper(
-                                            onDismiss = { viewModel.removeItem(item.id) }
-                                        ) {
-                                            ShoppingListItemRow(
-                                                item = item,
-                                                onToggle = { purchased -> viewModel.toggleItem(item.id, purchased) }
-                                            )
-                                        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            when {
+                !isListCreated -> {
+                    EmptyListDesign(
+                        onCreateList = { 
+                            tempListName = ""
+                            showCreateDialog = true 
+                        },
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                else -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Text(
+                            text = "${activeList.items.size} items · ${activeList.items.count { it.purchased }} purchased",
+                            fontSize = 14.sp,
+                            color = NeutralGray,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // "+ Add new item" button
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp)
+                                .clickable { 
+                                    editingItem = null
+                                    showAddItemSheet = true 
+                                },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFEFF6FF)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Add new item",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = PrimaryBlue
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        if (activeList.items.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("No items in this list yet. Tap '+ Add new item' to start.", color = NeutralGray, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(32.dp))
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+                            ) {
+                                items(activeList.items, key = { it.id }) { item ->
+                                    SwipeDismissWrapper(
+                                        onDismiss = { viewModel.removeItem(item.id) }
+                                    ) {
+                                        ShoppingListItemCard(
+                                            item = item,
+                                            onToggle = { purchased -> viewModel.toggleItem(item.id, purchased) },
+                                            onEdit = {
+                                                editingItem = item
+                                                showAddItemSheet = true
+                                            }
+                                        )
                                     }
                                 }
                             }
                         }
-                        is ApiResult.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                        is ApiResult.Error -> Text("Error: ${state.message}", modifier = Modifier.align(Alignment.Center))
-                        else -> {}
                     }
                 }
             }
 
-            // Live Camera Document Text Scanner Overlay with intelligent simulation
-            if (showCameraScanner) {
-                LiveCameraOcrScannerOverlay(
-                    onDismiss = { showCameraScanner = false },
-                    onTextDetected = { parsedItems ->
-                        parsedItems.forEach { viewModel.addItem(productId = null, customName = it) }
-                        showCameraScanner = false
+            // Add/Edit Item Bottom Sheet
+            if (showAddItemSheet) {
+                AddItemBottomSheet(
+                    listName = activeList?.name ?: "My List",
+                    editingItem = editingItem,
+                    onDismiss = { 
+                        showAddItemSheet = false
+                        editingItem = null
+                    },
+                    onConfirm = { name, qty, unit, subAllowed, urgent ->
+                        if (editingItem != null) {
+                            viewModel.updateItemCustom(editingItem!!.id, name, qty, unit, subAllowed, urgent)
+                        } else {
+                            viewModel.addItemCustom(name, qty, unit, subAllowed, urgent)
+                        }
+                        showAddItemSheet = false
+                        editingItem = null
                     }
+                )
+            }
+
+            if (showShareSheet) {
+                ShareWithFamilyBottomSheet(
+                    onDismiss = { showShareSheet = false }
                 )
             }
         }
     }
+}
 
-    if (showAddDialog) {
-        AddItemDialog(
-            searchResults = searchResults,
-            onSearch = { viewModel.searchProducts(it) },
-            onDismiss = { showAddDialog = false },
-            onConfirm = { productId, name ->
-                viewModel.addItem(productId = productId, customName = name)
-                showAddDialog = false
+@Composable
+fun EmptyListDesign(
+    onCreateList: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            modifier = Modifier.size(120.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderGray)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Default.ShoppingBag,
+                    contentDescription = null,
+                    tint = NeutralGray.copy(alpha = 0.5f),
+                    modifier = Modifier.size(64.dp)
+                )
             }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "No List yet - Create one to get Started",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = NeutralGray,
+            textAlign = TextAlign.Center
         )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onCreateList,
+            modifier = Modifier
+                .width(160.dp)
+                .height(48.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+        ) {
+            Text(
+                text = "Create List",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
     }
 }
 
 @Composable
-fun LiveCameraOcrScannerOverlay(
-    onDismiss: () -> Unit,
-    onTextDetected: (List<String>) -> Unit
+fun ShoppingListItemCard(
+    item: ShoppingListItemDto,
+    onToggle: (Boolean) -> Unit,
+    onEdit: () -> Unit
 ) {
-    var isScanning by remember { mutableStateOf(true) }
-    var detectedLabels by remember { mutableStateOf<List<String>>(emptyList()) }
-    
-    val infiniteTransition = rememberInfiniteTransition(label = "line")
-    val scanLineOffset by infiniteTransition.animateFloat(
-        initialValue = 0.1f,
-        targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "lineOffset"
-    )
-
-    LaunchedEffect(Unit) {
-        // Simulating the initialization and inference of a lightweight on-device ML Kit Text Recognition model
-        kotlinx.coroutines.delay(1500)
-        detectedLabels = emptyList() // Clean slate for UI integration
-        isScanning = false
-    }
-
-    Box(
+    Surface(
         modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.85f))
+            .fillMaxWidth()
+            .clickable(onClick = onEdit),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderGray)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = { onToggle(!item.purchased) },
+                modifier = Modifier.size(28.dp)
+            ) {
+                if (item.purchased) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Purchased",
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(28.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.RadioButtonUnchecked,
+                        contentDescription = "Not purchased",
+                        tint = BorderGray,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (item.purchased) NeutralDark.copy(alpha = 0.6f) else NeutralDark,
+                    textDecoration = if (item.purchased) TextDecoration.LineThrough else null
+                )
+                Text(
+                    text = "${item.aisleNumber ?: "1 Pcs"} / note",
+                    fontSize = 13.sp,
+                    color = NeutralGray
+                )
+            }
+
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = "Edit Item", tint = NeutralGray, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddItemBottomSheet(
+    listName: String,
+    editingItem: ShoppingListItemDto?,
+    onDismiss: () -> Unit,
+    onConfirm: (String, Int, String, Boolean, Boolean) -> Unit
+) {
+    var itemName by remember { mutableStateOf(editingItem?.name ?: "") }
+    
+    val initialQty = editingItem?.aisleNumber?.split(" ")?.firstOrNull()?.toIntOrNull() ?: 1
+    val initialUnit = editingItem?.aisleNumber?.split(" ")?.getOrNull(1) ?: "Pcs"
+
+    var quantity by remember { mutableIntStateOf(initialQty) }
+    var selectedUnit by remember { mutableStateOf(initialUnit) }
+    var substituteAllowed by remember { mutableStateOf(false) }
+    var markAsUrgent by remember { mutableStateOf(editingItem?.sectionName == "Urgent") }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 12.dp)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Color(0xFFCBD5E1))
+            )
+        }
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp, top = 4.dp)
+                .fillMaxWidth()
         ) {
+            Text(
+                text = if (editingItem != null) "Edit Item" else "Add Item",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = NeutralDark
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = itemName,
+                onValueChange = { itemName = it },
+                placeholder = { Text("Item name", color = NeutralGray.copy(alpha = 0.6f)) },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = InputGray,
+                    unfocusedContainerColor = InputGray,
+                    disabledContainerColor = InputGray,
+                    focusedBorderColor = PrimaryBlue,
+                    unfocusedBorderColor = BorderGray,
+                    focusedTextColor = NeutralDark,
+                    unfocusedTextColor = NeutralDark
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Stepper and Unit selector side-by-side in one clean horizontal row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Quantity numeric stepper [ - 1 + ]
+                Row(
+                    modifier = Modifier
+                        .background(InputGray, RoundedCornerShape(12.dp))
+                        .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "–",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeutralDark,
+                        modifier = Modifier
+                            .clickable { if (quantity > 1) quantity-- }
+                            .padding(horizontal = 6.dp)
+                    )
+                    Text(
+                        text = "$quantity",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeutralDark,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    Text(
+                        text = "+",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeutralDark,
+                        modifier = Modifier
+                            .clickable { quantity++ }
+                            .padding(horizontal = 6.dp)
+                    )
+                }
+
+                // Segmented pill selector container (without "Unit" word)
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(InputGray, RoundedCornerShape(12.dp))
+                        .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    val units = listOf("Pcs", "Packs", "Grams", "Kg")
+                    units.forEach { unit ->
+                        val isSelected = selectedUnit == unit
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) Color(0xFFEFF6FF) else Color.White,
+                            border = if (!isSelected) androidx.compose.foundation.BorderStroke(1.dp, BorderGray) else androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.3f)),
+                            shadowElevation = if (isSelected) 1.dp else 0.dp,
+                            modifier = Modifier.clickable { selectedUnit = unit }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = unit,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) PrimaryBlue else NeutralDark
+                                )
+                                if (isSelected) {
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(13.dp),
+                                        tint = PrimaryBlue
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Two toggle switches side-by-side with compact scale
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Live ML Text Scanner",
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Text(
-                text = "Align handwritten or printed list checklist inside target box framework",
-                color = Color.LightGray,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Camera Viewfinder Box Framework
-            Box(
-                modifier = Modifier
-                    .size(280.dp)
-                    .border(2.dp, Color(0xFF2563EB), RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF1F2937))
-            ) {
-                // Animated laser scanner horizontal rule line overlay
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.01f)
-                        .align(Alignment.TopCenter)
-                        .offset(y = 280.dp * scanLineOffset)
-                        .background(Color.Cyan)
-                )
-
-                if (isScanning) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CircularProgressIndicator(color = Color.Cyan, modifier = Modifier.size(32.dp))
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text("Running ML Inference...", color = Color.Cyan, style = MaterialTheme.typography.labelSmall)
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("✔ On-Device Text Model Parsed Successfully", color = Color(0xFF4CAF50), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        detectedLabels.forEach { item ->
-                            Text("• $item", color = Color.White, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 2.bindValue))
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = {}, modifier = Modifier.background(Color.DarkGray, CircleShape)) {
-                    Icon(Icons.Default.FlashOn, contentDescription = "Flash", tint = Color.White)
-                }
-                
-                Button(
-                    onClick = { if (!isScanning && detectedLabels.isNotEmpty()) onTextDetected(detectedLabels) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
-                    enabled = !isScanning,
-                    modifier = Modifier.height(50.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Ingest Parsed Items", fontWeight = FontWeight.Bold)
+                    Text("Substitute allowed", fontSize = 13.sp, color = NeutralDark)
+                    Switch(
+                        checked = substituteAllowed,
+                        onCheckedChange = { substituteAllowed = it },
+                        modifier = Modifier.scale(0.75f),
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = PrimaryBlue,
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color(0xFFE2E8F0),
+                            uncheckedBorderColor = Color(0xFFCBD5E1)
+                        )
+                    )
                 }
-            }
-        }
-    }
-}
 
-private val Int.bindValue: androidx.compose.ui.unit.Dp
-    get() = this.dp
-
-@Composable
-fun ShoppingListItemRow(
-    item: ShoppingListItemDto,
-    onToggle: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp, 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Checkbox(
-            checked = item.purchased,
-            onCheckedChange = onToggle
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.bodyLarge,
-                textDecoration = if (item.purchased) TextDecoration.LineThrough else null,
-                color = if (item.purchased) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-            )
-            if (!item.purchased && (item.aisleNumber != null || item.sectionName != null)) {
-                Text(
-                    text = "Find in: ${item.sectionName ?: ""} Aisle ${item.aisleNumber ?: ""}".trim(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun EmptyListMessage(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Your list is empty", style = MaterialTheme.typography.titleMedium)
-        Text(
-            "Add items you need to buy manually or tap the camera scanner to convert an image to a checklist.",
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TemplateDialog(
-    templates: List<String>,
-    onDismiss: () -> Unit,
-    onLoadTemplate: (String) -> Unit,
-    onSaveAsTemplate: (String) -> Unit
-) {
-    var newTemplateName by remember { mutableStateOf("") }
-    var tabIndex by remember { mutableIntStateOf(0) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("List Templates") },
-        text = {
-            Column {
-                TabRow(selectedTabIndex = tabIndex) {
-                    Tab(selected = tabIndex == 0, onClick = { tabIndex = 0 }, text = { Text("Load") })
-                    Tab(selected = tabIndex == 1, onClick = { tabIndex = 1 }, text = { Text("Save Current") })
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                if (tabIndex == 0) {
-                    if (templates.isEmpty()) {
-                        Text("No templates saved yet.", style = MaterialTheme.typography.bodyMedium)
-                    } else {
-                        LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
-                            items(templates) { template ->
-                                ListItem(
-                                    headlineContent = { Text(template) },
-                                    modifier = Modifier.clickable { onLoadTemplate(template) }
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    OutlinedTextField(
-                        value = newTemplateName,
-                        onValueChange = { newTemplateName = it },
-                        label = { Text("Template Name") },
-                        modifier = Modifier.fillMaxWidth()
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Mark as Urgent", fontSize = 13.sp, color = NeutralDark)
+                    Switch(
+                        checked = markAsUrgent,
+                        onCheckedChange = { markAsUrgent = it },
+                        modifier = Modifier.scale(0.75f),
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = SuccessGreen,
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color(0xFFE2E8F0),
+                            uncheckedBorderColor = Color(0xFFCBD5E1)
+                        )
                     )
                 }
             }
-        },
-        confirmButton = {
-            if (tabIndex == 1) {
-                Button(
-                    onClick = { onSaveAsTemplate(newTemplateName) },
-                    enabled = newTemplateName.isNotBlank()
-                ) {
-                    Text("Save Template")
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        }
-    )
-}
 
-@Composable
-fun ShareListDialog(
-    shareCode: String?,
-    onGenerate: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Family Sharing") },
-        text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Adding to : [$listName]",
+                fontSize = 13.sp,
+                color = NeutralGray
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Button(
+                onClick = {
+                    if (itemName.isNotBlank()) {
+                        onConfirm(itemName, quantity, selectedUnit, substituteAllowed, markAsUrgent)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
                 Text(
-                    text = "Share this list with family members so they can add items in real-time.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
+                    text = if (editingItem != null) "Save Changes" else "Add to List",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
-                Spacer(modifier = Modifier.height(24.dp))
-                if (shareCode == null) {
-                    Button(onClick = onGenerate) {
-                        Text("Generate Invite Code")
-                    }
-                } else {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = shareCode,
-                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Share this code with your family", style = MaterialTheme.typography.labelSmall)
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Done")
             }
         }
-    )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddItemDialog(
-    searchResults: List<ProductResponse>,
-    onSearch: (String) -> Unit,
-    onDismiss: () -> Unit,
-    onConfirm: (String?, String) -> Unit
+fun ShareWithFamilyBottomSheet(
+    onDismiss: () -> Unit
 ) {
-    var itemName by remember { mutableStateOf("") }
+    var inviteInput by remember { mutableStateOf("") }
 
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text("Add Item (Method 1)") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = itemName,
-                    onValueChange = { 
-                        itemName = it
-                        onSearch(it)
-                    },
-                    label = { Text("Search or Enter Name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                if (searchResults.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Matching Products:", style = MaterialTheme.typography.labelMedium)
-                    LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
-                        items(searchResults) { product ->
-                            ListItem(
-                                headlineContent = { Text(product.name) },
-                                supportingContent = { Text("粗${product.price} - ${product.category}") },
-                                modifier = Modifier.clickable {
-                                    onConfirm(product.productId, product.name)
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Share with Family",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = NeutralDark,
+                modifier = Modifier.align(Alignment.Start)
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Invite others to view and edit this list",
+                fontSize = 14.sp,
+                color = NeutralGray,
+                modifier = Modifier.align(Alignment.Start)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            CartviaInputField(
+                value = inviteInput,
+                onValueChange = { inviteInput = it },
+                label = "",
+                placeholder = "Enter email or username",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             Button(
-                onClick = { if (itemName.isNotBlank()) onConfirm(null, itemName) },
-                enabled = itemName.isNotBlank()
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
             ) {
-                Text("Add Manual")
+                Text(
+                    text = "Send Invite",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = InputGray
+            ) {
+                Text(
+                    text = "⏱ Coming soon",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = NeutralGray,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
             }
         }
-    )
+    }
 }
